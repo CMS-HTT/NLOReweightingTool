@@ -1,8 +1,10 @@
 /*
   functionmacro.C : provide Higgs pT reweighting factor for the given mass and tan(beta)
+  Don't change ! (unless, you need your own defined function)
+
   20 April 2016
-  Yuta Takahashi
  */
+
 
 #include "TMath.h"
 #include "TFile.h"

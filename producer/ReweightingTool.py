@@ -168,7 +168,7 @@ class ReweightingManager(object):
                 self.canvas.Print('validation.pdf')
 
 
-        ofile = TFile('../user/Reweight.root', 'recreate')
+        ofile = TFile('/afs/cern.ch/user/y/ytakahas/public/forHTT/Reweight.root', 'recreate')
         for ii in results:
             ii.GetXaxis().SetTitle('Generated Higgs pT (GeV)')
             ii.GetYaxis().SetTitle('(NLO/PY8) weight')
