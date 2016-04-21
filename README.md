@@ -25,6 +25,10 @@ Python:
 
 The example code creates the shared library out of [functionmacro.C](https://github.com/CMS-HTT/NLOReweightingTool/blob/master/user/functionmacro.C) and load it at the beginning of the ROOT session. This way, ROOT can recognize the reweighting function.
 
+If you prefer, you can also add following line to your `rootlogon.C`
+
+`gROOT->Macro("./functionmacro.C+g");`
+
 
 **DO NOT MODIFY functionmacro.C unless you need your own defined function**
 
