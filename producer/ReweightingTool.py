@@ -1,26 +1,39 @@
 import ConfigParser
 import shelve
 import copy
+from array import array
+
 from ROOT import gROOT, gStyle, TFile, TH1F
 
-gROOT.SetBatch(True)
+#gROOT.SetBatch(True)
 
 
-def histCreator_PY8(dir, tanb_PY8, var, mass):
+def AvoidNegativeBin(hist):
+    '''Set negative entries to zero'''
+    for i in range (1,hist.GetNbinsX()+1) :
+        if hist.GetBinContent(i) < 0:
+            hist.SetBinContent(i, 0)
+
+        if hist.GetBinContent(i) < 0 and abs(hist.GetBinContent(i)/hist.GetSumOfWeights()) > 0.001:
+            print 'WARNING :', hist.GetName(), 'bin', i, 'is negative :', hist.GetBinContent(i), '/', hist.GetSumOfWeights(), ' -> set to zero'
+
+
+def histCreator(file, var, mass, name):
     '''Simple function to derive PY8 spectrum'''
 
-    tfile = TFile(dir + '/GEN_testrun-lhc-A-mA' + str(mass) + '_tb' + tanb_PY8 + '_t_PY8/all.root')
+    tfile = TFile(file)
     tree = tfile.Get(var['tree'])
     
-    hist_py8 = TH1F('h_PY8_' + str(mass),
-                    'h_PY8_' + str(mass),
-                    var['nbin'], var['xmin'], var['xmax'])
+    hist = TH1F('h_' + name + '_' + str(mass),
+                'h_' + name + '_' + str(mass),
+#                len(var['bin'])-1, array('d', var['bin'])) 
+                var['nbin'], var['xmin'], var['xmax'])
     
-    hist_py8.Sumw2()
+    hist.Sumw2()
     
-    tree.Draw(var['var'] + ' >> ' + hist_py8.GetName(), '(1)*weight')
-    
-    return copy.deepcopy(hist_py8)
+    tree.Draw(var['var'] + ' >> ' + hist.GetName(), '(1)*weight')
+    return copy.deepcopy(hist)
+
 
 
 
@@ -38,7 +51,9 @@ class ReweightingManager(object):
         self.Yukawa = shelve.open('Yukawa_' + self.particle + '.db')['Yukawa']
         
         # variables for the reweighting
-        self.var = {'tree':'tree', 'var':'gen_vpt', 'nbin':50, 'xmin':0, 'xmax':700}
+        self.binning = [b*20 for b in range(0,26)]
+        self.binning.extend([700,1000])
+        self.var = {'tree':'tree', 'var':'gen_vpt', 'nbin':40, 'xmin':0, 'xmax':800, 'bin':self.binning}
 
 
         print 
@@ -54,10 +69,14 @@ class ReweightingManager(object):
     def derive(self):
 
         results = []
+        dists = []
 
         for mass in self.mp:
 
-            hist_PY8 = histCreator_PY8(self.dir, self.tanb_PY8, self.var, mass)
+            # 1st step : derive PY8 spectrum
+
+            hist_PY8 = histCreator(self.dir + '/GEN_testrun-lhc-A-mA' + str(mass) + '_tb' + self.tanb_PY8 + '_t_PY8/all.root', self.var, mass, 'PY8')
+            dists.append(copy.deepcopy(hist_PY8))
 
             # 2nd step : derive NLO 2HDM spectrum
 
@@ -73,15 +92,7 @@ class ReweightingManager(object):
 
             for key, val in sorted(hdict.iteritems()):
 
-                tfile = TFile(val['file'])
-                tree = tfile.Get(self.var['tree'])
-                
-                hist = TH1F('h_' + key + '_' + str(mass), 
-                            'h_' + key + '_' + str(mass), 
-                            self.var['nbin'], self.var['xmin'], self.var['xmax'])
-                hist.Sumw2()
-
-                tree.Draw(self.var['var'] + ' >> ' + hist.GetName(), '(1)*weight')
+                hist = histCreator(val['file'], self.var, mass, key)
                 hists_2hdm.append(copy.deepcopy(hist))
 
 
@@ -115,6 +126,9 @@ class ReweightingManager(object):
                 hist_mssm.Add(rescaled_bottom)
 
                 hist_mssm.GetYaxis().SetRangeUser(0., hist_mssm.GetBinContent(hist_mssm.GetMaximumBin())*1.1)
+                hist_mssm.SetName('MSSM_' + str(mass) + '_' + tanb)
+                dists.append(copy.deepcopy(hist_mssm))
+                AvoidNegativeBin(hist_mssm)
 
                 hists =[hist_PY8, hist_mssm]
 
@@ -122,11 +136,14 @@ class ReweightingManager(object):
                     ihist.Scale(1./ihist.GetSumOfWeights())
 
                 ratio = copy.deepcopy(hists[1])
-                ratio.Divide(hists[0])
+                ratio.Divide(hists[1], hists[0],1,1,'b')
+                
+                if tanb=='tanb_20':
+                    import pdb; pdb.set_trace()
 
                 ratio.GetYaxis().SetRangeUser(ratio.GetBinContent(ratio.GetMinimumBin())*0.8, ratio.GetBinContent(ratio.GetMaximumBin())*1.2)
                 ratio.Draw()
-                ratio.Fit('pol6')
+                ratio.Fit('pol6','QI')
                 func = ratio.GetFunction('pol6')
                 func.SetName('weight_mA' + str(mass) + '_' + tanb)
 
@@ -134,15 +151,24 @@ class ReweightingManager(object):
 
 
 
-        print 'Writing to files ...'
         ofile = TFile('../user/Reweight.root', 'recreate')
         for ii in results:
-            print 'Writing ...', ii.GetName()
             ii.GetXaxis().SetTitle('Generated Higgs pT (GeV)')
             ii.GetYaxis().SetTitle('(NLO/PY8) weight')
             ii.Write()
         ofile.Write()
         ofile.Close()
+
+        dfile = TFile('Dists.root', 'recreate')
+        for ii in dists:
+            if ii.GetMinimum() < 0 : 
+                print 'Warning ...', ii.GetName(), ii.GetMinimum()
+                
+            ii.GetXaxis().SetTitle('Generated Higgs pT (GeV)')
+            ii.GetYaxis().SetTitle('a.u.')
+            ii.Write()
+        dfile.Write()
+        dfile.Close()
 
 if __name__ == '__main__':
     tool = ReweightingManager()
