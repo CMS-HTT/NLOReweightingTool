@@ -1,5 +1,9 @@
 # How to use
 
+Clone repository
+
+`git clone https://github.com/CMS-HTT/NLOReweightingTool`
+
 Go to user directory
 
 `cd user`
