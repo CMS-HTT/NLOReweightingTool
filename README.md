@@ -10,9 +10,9 @@ Go to user directory
 
 ## If you already have your final trees
 
-The idea is to load the shared library and use returnNLOweight function. 
+The idea is to load the shared library and use _returnNLOweight_ function. 
 
-The example code is available below.
+You can try following example code.
 
 C++:
 
@@ -58,7 +58,7 @@ This will create Python shelve object, which stores tan(beta) vs Yukawa coupling
 
 This macro will Produce reweighting file with the settings in config.ini (which should be easy to understand).
 
-This macro compare the PY8 and MSSM distribution and derive the weight (MSSM/PY8 ratio) as a function of Higgs pT. The fitting function is exponential + pol3. (empirically, this was the best).
+This macro compare the PY8 and MSSM distribution and derive the weight (MSSM/PY8 ratio) as a function of Higgs pT. The fitting function is exponential + pol3 (empirically, this was the best).
 
 The macro also produces validation.pdf, where you can check if your fitting went OK or not.
-You can change output ROOT file location as you wish.
+You can change output ROOT file location as you wish (output variable in config.ini)
