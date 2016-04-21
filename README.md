@@ -31,13 +31,13 @@ The example code creates the shared library out of [functionmacro.C](https://git
 
 ### If you want to produce Ntuples with the NLO weights (not recommended)
 
-In your production process, you can read the weight file: 
+In your production process, you can read the weight file (in case of Python) : 
 
 `file = TFile('/afs/cern.ch/user/y/ytakahas/public/forHTT/Reweight.root')`
 
 `func = file.Get('your desired weight function for mA, tanb point')`
 
-`func->Eval(higgs pT)`
+`func.Eval(higgs pT)`
 
 This should give you the NLO weight and you can store the values as the way you prefer.
 
