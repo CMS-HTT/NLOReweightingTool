@@ -3,8 +3,8 @@ from ROOT import TFile, TH1F, gROOT, kRed, kBlue
 # compile functionmacro.C and create shared library
 # replace directory, as you wish (i.e. if you want to work on different directory)
 
-gROOT.Macro('./functionmacro.C+g')
-from ROOT import returnNLOweight
+gROOT.Macro('./functionmacro.C+')
+# imports method "returnNLOweight"
 
 
 # read your ROOT file

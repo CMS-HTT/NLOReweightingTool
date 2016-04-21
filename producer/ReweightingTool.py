@@ -1,14 +1,13 @@
 import ConfigParser
 import shelve
 import copy
-from array import array
 
-from ROOT import gROOT, gStyle, TFile, TH1F, TF1, TCanvas, TLegend
+from ROOT import gROOT, TFile, TH1F, TF1, TCanvas
 
 gROOT.SetBatch(True)
 
 
-def AvoidNegativeBin(hist):
+def removeNegativeBins(hist):
     '''Set negative entries to zero'''
     for i in range (1,hist.GetNbinsX()+1) :
         if hist.GetBinContent(i) < 0:
@@ -64,12 +63,12 @@ class ReweightingManager(object):
         self.canvas.cd(id)
         ymax = max([hist.GetMaximum() for hist in hists])
         
-        for ii, hist in enumerate(hists):
+        for i_hist, hist in enumerate(hists):
             hist.SetMaximum(ymax*1.4)
             hist.SetLineWidth(2)
-            hist.SetLineColor(ii+1)
+            hist.SetLineColor(i_hist+1)
 
-            if ii==0: hist.Draw()
+            if i_hist == 0: hist.Draw()
             else: hist.Draw('same')
 
 
@@ -112,7 +111,7 @@ class ReweightingManager(object):
 
             # 3rd step : rescaling 2HDM spectrum to MSSM
 
-            for tanb, val in sorted(self.Yukawa.iteritems()):
+            for tanb, val in sorted(self.Yukawa.items()):
 
                 if tanb.find('0.')!=-1: continue
                 
@@ -134,12 +133,12 @@ class ReweightingManager(object):
 
                 hist_mssm.GetYaxis().SetRangeUser(0., hist_mssm.GetBinContent(hist_mssm.GetMaximumBin())*1.1)
                 hist_mssm.SetName('MSSM_' + str(mass) + '_' + tanb)
-                AvoidNegativeBin(hist_mssm)
+                removeNegativeBins(hist_mssm)
 
                 hists =[hist_PY8, hist_mssm]
 
-                for ii, ihist in enumerate(hists):
-                    ihist.Scale(1./ihist.GetSumOfWeights())
+                for hist in hists:
+                    hist.Scale(1./hist.GetSumOfWeights())
 
                 ratio = copy.deepcopy(hists[1])
                 ratio.Divide(hists[1], hists[0],1,1,'b')
@@ -148,7 +147,7 @@ class ReweightingManager(object):
 
                 myfunc = TF1('myfunc', 'expo(0) + pol3(2)')
 
-                ratio.Fit('myfunc','Q')
+                ratio.Fit('myfunc', 'Q')
                 func = ratio.GetFunction('myfunc')
                 func.SetName('weight_mA' + str(mass) + '_' + tanb)
                 
@@ -158,9 +157,6 @@ class ReweightingManager(object):
                 results.append(copy.deepcopy(func))
 
                 # validation plots:
-                
-                leg = '(mA, tanb) = (' + str(mass) + ', ' + tanb.replace('tanb_','') + ')' 
-                
                 self.canvas.Clear()
                 self.canvas.Divide(2)
                 self.overlay(hists, 1)
@@ -169,10 +165,10 @@ class ReweightingManager(object):
 
 
         ofile = TFile('/afs/cern.ch/user/y/ytakahas/public/forHTT/Reweight.root', 'recreate')
-        for ii in results:
-            ii.GetXaxis().SetTitle('Generated Higgs pT (GeV)')
-            ii.GetYaxis().SetTitle('(NLO/PY8) weight')
-            ii.Write()
+        for result in results:
+            result.GetXaxis().SetTitle('Generated Higgs pT (GeV)')
+            result.GetYaxis().SetTitle('(NLO/PY8) weight')
+            result.Write()
         ofile.Write()
         ofile.Close()
 
