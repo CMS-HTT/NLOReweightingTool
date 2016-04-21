@@ -3,9 +3,9 @@ import shelve
 import copy
 from array import array
 
-from ROOT import gROOT, gStyle, TFile, TH1F
+from ROOT import gROOT, gStyle, TFile, TH1F, TF1, TCanvas, TLegend
 
-#gROOT.SetBatch(True)
+gROOT.SetBatch(True)
 
 
 def AvoidNegativeBin(hist):
@@ -26,7 +26,6 @@ def histCreator(file, var, mass, name):
     
     hist = TH1F('h_' + name + '_' + str(mass),
                 'h_' + name + '_' + str(mass),
-#                len(var['bin'])-1, array('d', var['bin'])) 
                 var['nbin'], var['xmin'], var['xmax'])
     
     hist.Sumw2()
@@ -49,34 +48,48 @@ class ReweightingManager(object):
         self.tanb_2HDM = init.get('settings', 'tanb_2HDM')
         self.tanb_PY8 = init.get('settings', 'tanb_PY8')
         self.Yukawa = shelve.open('Yukawa_' + self.particle + '.db')['Yukawa']
+        self.var = {'tree':'tree', 'var':'gen_vpt', 'nbin':40, 'xmin':0, 'xmax':800}
+        self.canvas = TCanvas('validation', 'validation', 1400,600)
+        self.canvas.Divide(2,1)
+        self.canvas.Print('validation.pdf[')
         
-        # variables for the reweighting
-        self.binning = [b*20 for b in range(0,26)]
-        self.binning.extend([700,1000])
-        self.var = {'tree':'tree', 'var':'gen_vpt', 'nbin':40, 'xmin':0, 'xmax':800, 'bin':self.binning}
-
-
         print 
         print 'mass point :', self.mp
         print 'particle :', self.particle
         print 'tanb used for 2HDM :', self.tanb_2HDM
         print 'tanb used for PY8 :', self.tanb_PY8
         print 'ROOT file :', self.dir
-        print 
+        print         
 
+    def overlay(self, hists, titles, id):
+        self.canvas.cd(id)
+        ymax = max([hist.GetMaximum() for hist in hists])
+        leg = TLegend(0.6,0.7,0.8,0.9)
+        
+        for ii, hist in enumerate(hists):
+            hist.SetMaximum(ymax*1.4)
+            hist.SetLineWidth(2)
+            hist.SetLineColor(ii+1)
 
+            if ii==0: hist.Draw()
+            else: hist.Draw('same')
+
+            leg.AddEntry(hist, titles[ii], 'lep')
+        leg.Draw()
+
+    def Save(self):
+        self.canvas.Update()
+        self.canvas.Print('validation.pdf')
 
     def derive(self):
 
         results = []
-        dists = []
 
         for mass in self.mp:
 
             # 1st step : derive PY8 spectrum
 
             hist_PY8 = histCreator(self.dir + '/GEN_testrun-lhc-A-mA' + str(mass) + '_tb' + self.tanb_PY8 + '_t_PY8/all.root', self.var, mass, 'PY8')
-            dists.append(copy.deepcopy(hist_PY8))
 
             # 2nd step : derive NLO 2HDM spectrum
 
@@ -108,6 +121,8 @@ class ReweightingManager(object):
             # 3rd step : rescaling 2HDM spectrum to MSSM
 
             for tanb, val in sorted(self.Yukawa.iteritems()):
+
+                if tanb.find('0.')!=-1: continue
                 
                 print 'processing ... ', mass, tanb
 
@@ -127,7 +142,6 @@ class ReweightingManager(object):
 
                 hist_mssm.GetYaxis().SetRangeUser(0., hist_mssm.GetBinContent(hist_mssm.GetMaximumBin())*1.1)
                 hist_mssm.SetName('MSSM_' + str(mass) + '_' + tanb)
-                dists.append(copy.deepcopy(hist_mssm))
                 AvoidNegativeBin(hist_mssm)
 
                 hists =[hist_PY8, hist_mssm]
@@ -138,17 +152,23 @@ class ReweightingManager(object):
                 ratio = copy.deepcopy(hists[1])
                 ratio.Divide(hists[1], hists[0],1,1,'b')
                 
-                if tanb=='tanb_20':
-                    import pdb; pdb.set_trace()
-
                 ratio.GetYaxis().SetRangeUser(ratio.GetBinContent(ratio.GetMinimumBin())*0.8, ratio.GetBinContent(ratio.GetMaximumBin())*1.2)
                 ratio.Draw()
-                ratio.Fit('pol6','QI')
-                func = ratio.GetFunction('pol6')
+
+                myfunc = TF1('myfunc', 'expo(0) + pol3(2)')
+
+                ratio.Fit('myfunc','Q')
+                func = ratio.GetFunction('myfunc')
                 func.SetName('weight_mA' + str(mass) + '_' + tanb)
 
                 results.append(copy.deepcopy(func))
 
+                # validation plots:
+
+                leg = '(mA, tanb) = (' + str(mass) + ', ' + tanb.replace('tanb_','') + ')' 
+                self.overlay(hists, ['PY8, ' + leg, 'MSSM, ' + leg], 1)
+                self.overlay([ratio], ['ratio, ' + leg], 2)
+                self.Save()
 
 
         ofile = TFile('../user/Reweight.root', 'recreate')
@@ -159,20 +179,12 @@ class ReweightingManager(object):
         ofile.Write()
         ofile.Close()
 
-        dfile = TFile('Dists.root', 'recreate')
-        for ii in dists:
-            if ii.GetMinimum() < 0 : 
-                print 'Warning ...', ii.GetName(), ii.GetMinimum()
-                
-            ii.GetXaxis().SetTitle('Generated Higgs pT (GeV)')
-            ii.GetYaxis().SetTitle('a.u.')
-            ii.Write()
-        dfile.Write()
-        dfile.Close()
+        self.canvas.Print('validation.pdf]')
 
 if __name__ == '__main__':
     tool = ReweightingManager()
     tool.derive()
+    tool.Save()
 
     print 
     print 'Done !'
