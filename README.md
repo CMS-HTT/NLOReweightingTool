@@ -10,7 +10,7 @@ Go to user directory
 
 ## If you already have your final trees
 
-Load the shared library and use the returnNLOweight function. 
+The idea is to load the shared library and use returnNLOweight function. 
 
 The example code is available below.
 
