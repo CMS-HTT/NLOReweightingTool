@@ -46,6 +46,7 @@ class ReweightingManager(object):
         self.dir = init.get('settings', 'dir')
         self.tanb_2HDM = init.get('settings', 'tanb_2HDM')
         self.tanb_PY8 = init.get('settings', 'tanb_PY8')
+        self.output = init.get('settings', 'output')
         self.Yukawa = shelve.open('Yukawa_' + self.particle + '.db')['Yukawa']
         self.var = {'tree':'tree', 'var':'gen_vpt', 'nbin':40, 'xmin':0, 'xmax':800}
         self.canvas = TCanvas('validation', 'validation', 1400,600)
@@ -164,7 +165,8 @@ class ReweightingManager(object):
                 self.canvas.Print('validation.pdf')
 
 
-        ofile = TFile('/afs/cern.ch/user/y/ytakahas/public/forHTT/Reweight.root', 'recreate')
+        ofile = TFile(self.output, 'recreate')
+
         for result in results:
             result.GetXaxis().SetTitle('Generated Higgs pT (GeV)')
             result.GetYaxis().SetTitle('(NLO/PY8) weight')

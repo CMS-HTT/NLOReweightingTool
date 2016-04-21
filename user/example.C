@@ -48,4 +48,10 @@ void example(){
 
   h_PY8_weighted->Draw();
   h_PY8->Draw("same");
+
+  TLegend* leg = new TLegend(0.5,0.6,0.7,0.8);
+  leg->AddEntry(h_PY8, "PY8", "lep");
+  leg->AddEntry(h_PY8_weighted, "PY8 (NLO weighted)", "lep");
+
+  leg->Draw();
 }

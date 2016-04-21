@@ -1,4 +1,4 @@
-from ROOT import TFile, TH1F, gROOT, kRed, kBlue
+from ROOT import TFile, TH1F, TLegend, gROOT, kRed, kBlue
 
 # compile functionmacro.C and create shared library
 # replace directory, as you wish (i.e. if you want to work on different directory)
@@ -53,3 +53,9 @@ h_PY8.SetLineColor(kBlue);
 
 h_PY8_weighted.Draw();
 h_PY8.Draw("same");
+
+leg = TLegend(0.5,0.6,0.7,0.8);
+leg.AddEntry(h_PY8, 'PY8', 'lep');
+leg.AddEntry(h_PY8_weighted, 'PY8 (NLO weighted)', 'lep');
+
+leg.Draw();
