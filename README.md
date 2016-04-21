@@ -23,9 +23,7 @@ Python:
 `python -i example.py`
 
 
-The example code creates the shared library out of [functionmacro.C](https://github.com/CMS-HTT/NLOReweightingTool/blob/master/user/functionmacro.C) and load it at the beginning of the ROOT session. 
-
-This way, ROOT can recognize the reweighting function.
+The example code creates the shared library out of [functionmacro.C](https://github.com/CMS-HTT/NLOReweightingTool/blob/master/user/functionmacro.C) and load it at the beginning of the ROOT session. This way, ROOT can recognize the reweighting function.
 
 
 **DO NOT MODIFY functionmacro.C unless you need your own defined function**
