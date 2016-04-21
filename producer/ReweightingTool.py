@@ -50,9 +50,8 @@ class ReweightingManager(object):
         self.Yukawa = shelve.open('Yukawa_' + self.particle + '.db')['Yukawa']
         self.var = {'tree':'tree', 'var':'gen_vpt', 'nbin':40, 'xmin':0, 'xmax':800}
         self.canvas = TCanvas('validation', 'validation', 1400,600)
-        self.canvas.Divide(2,1)
         self.canvas.Print('validation.pdf[')
-        
+
         print 
         print 'mass point :', self.mp
         print 'particle :', self.particle
@@ -61,10 +60,9 @@ class ReweightingManager(object):
         print 'ROOT file :', self.dir
         print         
 
-    def overlay(self, hists, titles, id):
+    def overlay(self, hists, id):
         self.canvas.cd(id)
         ymax = max([hist.GetMaximum() for hist in hists])
-        leg = TLegend(0.6,0.7,0.8,0.9)
         
         for ii, hist in enumerate(hists):
             hist.SetMaximum(ymax*1.4)
@@ -74,12 +72,6 @@ class ReweightingManager(object):
             if ii==0: hist.Draw()
             else: hist.Draw('same')
 
-            leg.AddEntry(hist, titles[ii], 'lep')
-        leg.Draw()
-
-    def Save(self):
-        self.canvas.Update()
-        self.canvas.Print('validation.pdf')
 
     def derive(self):
 
@@ -153,22 +145,27 @@ class ReweightingManager(object):
                 ratio.Divide(hists[1], hists[0],1,1,'b')
                 
                 ratio.GetYaxis().SetRangeUser(ratio.GetBinContent(ratio.GetMinimumBin())*0.8, ratio.GetBinContent(ratio.GetMaximumBin())*1.2)
-                ratio.Draw()
 
                 myfunc = TF1('myfunc', 'expo(0) + pol3(2)')
 
                 ratio.Fit('myfunc','Q')
                 func = ratio.GetFunction('myfunc')
                 func.SetName('weight_mA' + str(mass) + '_' + tanb)
+                
+                if ratio.GetMinimum() < 0:
+                    print 'Warning !'
 
                 results.append(copy.deepcopy(func))
 
                 # validation plots:
-
+                
                 leg = '(mA, tanb) = (' + str(mass) + ', ' + tanb.replace('tanb_','') + ')' 
-                self.overlay(hists, ['PY8, ' + leg, 'MSSM, ' + leg], 1)
-                self.overlay([ratio], ['ratio, ' + leg], 2)
-                self.Save()
+                
+                self.canvas.Clear()
+                self.canvas.Divide(2)
+                self.overlay(hists, 1)
+                self.overlay([ratio], 2)
+                self.canvas.Print('validation.pdf')
 
 
         ofile = TFile('../user/Reweight.root', 'recreate')
@@ -184,7 +181,6 @@ class ReweightingManager(object):
 if __name__ == '__main__':
     tool = ReweightingManager()
     tool.derive()
-    tool.Save()
 
     print 
     print 'Done !'

@@ -16,7 +16,7 @@ std::vector<int> marray = {80, 90, 100, 110, 120, 130, 140, 160, 180, 200, 250, 
 
 void ReadFile(){
 
-  TFile *file = new TFile("Reweight.root");
+  TFile *file = new TFile("/afs/cern.ch/user/y/ytakahas/public/forHTT/Reweight.root");
 
   const int num_of_tb = 60;  
 
@@ -29,7 +29,6 @@ void ReadFile(){
       wname += "_tanb_";
       wname += tanb + 1;
 
-      //      std::cout << wname << std::endl;
       func[imass][tanb] = (TF1*) gROOT->FindObject(wname);
     }    
     imass++;
@@ -39,18 +38,21 @@ void ReadFile(){
 
 float returnNLOweight(int mass, int tanb, float pt){
 
-  if(pt > 700) pt = 700;
+  if(pt > 800){
+    //    std::cout << "[INFO] pT = " << pt << " exceeds the range --> set it to 800." << std::endl;    
+    pt = 800;
+  }
 
   auto iter = std::find(marray.begin(), marray.end(), mass);
   size_t index = std::distance(marray.begin(), iter);
 
   if(index == marray.size()){
-    std::cout << "Invalid mass point ... " << mass << " -> return weight 1" << std::endl;    
+    std::cout << "[WARNING] Invalid mass point ... " << mass << " -> return weight 1" << std::endl;    
     return 1;
   }
   
   if(tanb <1 || tanb > 60){
-    std::cout << "Invalid tan(beta) point ... " << tanb << " -> return weight 1" << std::endl;
+    std::cout << "[WARNING] Invalid tan(beta) point ... " << tanb << " -> return weight 1" << std::endl;
     return 1;
   }
 
