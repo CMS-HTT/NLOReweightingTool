@@ -8,13 +8,13 @@
 
 #include "TMath.h"
 #include "TFile.h"
-#include "TF1.h"
+#include "TH1.h"
 #include <iostream>
 #include <vector>
 #include "TROOT.h"
 
-TF1* func[31][65];
-std::vector<int> marray = {80, 90, 100, 110, 120, 130, 140, 160, 180, 200, 250, 300, 350, 400, 450, 500, 600, 700, 800, 900, 1000, 1200, 1400, 1500, 1600, 1800, 2000, 2300, 2600, 2900, 3200};
+TH1F* func[27][60];
+std::vector<int> marray = {80, 90, 100, 110, 120, 130, 140, 160, 180, 200, 250, 300, 350, 400, 450, 500, 600, 700, 800, 900, 1000, 1200, 1400, 1500, 1600, 1800, 2000};
 
 void ReadFile(){
 
@@ -26,19 +26,21 @@ void ReadFile(){
   for(auto mass: marray){
     for(int tanb=0; tanb < num_of_tb; tanb++){
 
-      TString wname = "weight_mA";
+      TString wname = "MSSM_";
       wname += mass;
       wname += "_tanb_";
       wname += tanb + 1;
 
-      func[imass][tanb] = (TF1*) gROOT->FindObject(wname);
+      //      std::cout << wname << " " << func[imass][tanb] << " " << func[imass][tanb]->GetBinContent(1) << std::endl;
+      func[imass][tanb] = (TH1F*) gROOT->FindObject(wname);
     }    
     imass++;
   }
-  delete file;
+
+  //  delete file;
 }
 
-float returnNLOweight(int mass, int tanb, float pt){
+float returnNLOweight(Int_t mass, Int_t tanb, Double_t pt){
 
   if(pt > 800){
     //    std::cout << "[INFO] pT = " << pt << " exceeds the range --> set it to 800." << std::endl;    
@@ -58,7 +60,12 @@ float returnNLOweight(int mass, int tanb, float pt){
     return 1;
   }
 
-  return func[index][tanb-1]->Eval(pt);
+
+  //  Int_t ibin = func[index][tanb-1]->FindBin(pt);
+  //  std::cout << "test : index = " << index << " " << pt << " tanb_index =" << tanb-1  << " ibin=" << ibin << std::endl;
+  
+
+  return func[index][tanb-1]->GetBinContent(func[index][tanb-1]->FindBin(pt));
 
 }
 

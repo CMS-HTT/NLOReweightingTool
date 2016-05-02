@@ -1,10 +1,21 @@
 import ConfigParser
 import shelve
 import copy
-
-from ROOT import gROOT, TFile, TH1F, TF1, TCanvas
+from officialStyle import officialStyle
+from ROOT import gROOT, TFile, TH1F, TF1, TCanvas, gStyle, TLegend
 
 gROOT.SetBatch(True)
+officialStyle(gStyle)
+gStyle.SetOptTitle(1)
+gStyle.SetOptStat(0)
+
+
+def applyLegendSettings(leg):
+    leg.SetBorderSize(0)
+    leg.SetFillColor(10)
+    leg.SetLineColor(0)
+    leg.SetFillStyle(0)
+    leg.SetTextSize(0.04)
 
 
 def removeNegativeBins(hist):
@@ -48,9 +59,16 @@ class ReweightingManager(object):
         self.tanb_PY8 = init.get('settings', 'tanb_PY8')
         self.output = init.get('settings', 'output')
         self.Yukawa = shelve.open('Yukawa_' + self.particle + '.db')['Yukawa']
-        self.var = {'tree':'tree', 'var':'gen_vpt', 'nbin':40, 'xmin':0, 'xmax':800}
-        self.canvas = TCanvas('validation', 'validation', 1400,600)
+        self.var = {'tree':'tree', 'var':'gen_vpt', 'nbin':80, 'xmin':0, 'xmax':800}
+        self.canvas = TCanvas('validation', 'validation', 1400,1200)
         self.canvas.Print('validation.pdf[')
+        self.legs = []
+        self.title = ''
+
+        for leg in range(4):
+            self.legs.append(TLegend(0.3, 0.62, 0.8, 0.85))
+            applyLegendSettings(self.legs[leg])
+
 
         print 
         print 'mass point :', self.mp
@@ -60,17 +78,36 @@ class ReweightingManager(object):
         print 'ROOT file :', self.dir
         print         
 
-    def overlay(self, hists, id):
+    def overlay(self, hists, titles, id):
         self.canvas.cd(id)
-        ymax = max([hist.GetMaximum() for hist in hists])
+#        ymax = max([hist.GetMaximum() for hist in hists])
+#        ymin = max([hist.GetMinimum() for hist in hists])
+
+        ymax = max([hist.GetBinContent(hist.GetMaximumBin()) for hist in hists])
+        ymin = min([hist.GetBinContent(hist.GetMinimumBin()) for hist in hists])
         
+        self.legs[id-1].Clear()
+
         for i_hist, hist in enumerate(hists):
             hist.SetMaximum(ymax*1.4)
-            hist.SetLineWidth(2)
-            hist.SetLineColor(i_hist+1)
 
-            if i_hist == 0: hist.Draw()
-            else: hist.Draw('same')
+            if ymin < 0:
+                hist.SetMinimum(ymin*1.4)
+            else:
+                hist.SetMinimum(0)
+
+            hist.SetLineWidth(3-i_hist)
+            hist.SetLineColor(i_hist+1)
+            hist.SetMarkerSize(0)
+
+            hist.SetTitle(self.title)
+
+            if i_hist == 0: hist.Draw("h")
+            else: hist.Draw('hsame')
+
+            self.legs[id-1].AddEntry(hist, titles[i_hist] + ' {0:.1f}'.format(hist.GetSumOfWeights()), 'lep')
+
+        self.legs[id-1].Draw()
 
 
     def derive(self):
@@ -81,7 +118,7 @@ class ReweightingManager(object):
 
             # 1st step : derive PY8 spectrum
 
-            hist_PY8 = histCreator(self.dir + '/GEN_testrun-lhc-A-mA' + str(mass) + '_tb' + self.tanb_PY8 + '_t_PY8/all.root', self.var, mass, 'PY8')
+            hist_PY8 = histCreator(self.dir + '/Pythia/Pythia-A-mA' + str(mass) + '.root', self.var, mass, 'PY8')
 
             # 2nd step : derive NLO 2HDM spectrum
 
@@ -115,7 +152,7 @@ class ReweightingManager(object):
             for tanb, val in sorted(self.Yukawa.items()):
 
                 if tanb.find('0.')!=-1: continue
-                
+
                 print 'processing ... ', mass, tanb
 
                 Yt_MSSM = val['Yt']
@@ -130,6 +167,11 @@ class ReweightingManager(object):
 
                 rescaled_bottom = copy.deepcopy(hists_2hdm[4])
                 rescaled_bottom.Scale(Yb_MSSM*Yb_MSSM/(Yb_2HDM*Yb_2HDM))
+
+#                print 'Interference :', interference.GetSumOfWeights(), ' => rescaled : ', Yt_MSSM*Yb_MSSM/(Yt_2HDM*Yb_2HDM), ' => ', interference.GetSumOfWeights()*Yt_MSSM*Yb_MSSM/(Yt_2HDM*Yb_2HDM)
+#                print 'pure-top :', hists_2hdm[3].GetSumOfWeights(), ' => rescaled : ', Yt_MSSM*Yt_MSSM/(Yt_2HDM*Yt_2HDM), ' => ', rescaled_top.GetSumOfWeights()
+#                print 'pure-bottom :', hists_2hdm[4].GetSumOfWeights(), ' => rescaled : ', Yb_MSSM*Yb_MSSM/(Yb_2HDM*Yb_2HDM), ' => ', rescaled_bottom.GetSumOfWeights()
+
                 hist_mssm.Add(rescaled_bottom)
 
                 hist_mssm.GetYaxis().SetRangeUser(0., hist_mssm.GetBinContent(hist_mssm.GetMaximumBin())*1.1)
@@ -146,22 +188,29 @@ class ReweightingManager(object):
                 
                 ratio.GetYaxis().SetRangeUser(ratio.GetBinContent(ratio.GetMinimumBin())*0.8, ratio.GetBinContent(ratio.GetMaximumBin())*1.2)
 
-                myfunc = TF1('myfunc', 'expo(0) + pol3(2)')
+#                myfunc = TF1('myfunc', 'expo(0) + pol3(2)')
 
-                ratio.Fit('myfunc', 'Q')
-                func = ratio.GetFunction('myfunc')
-                func.SetName('weight_mA' + str(mass) + '_' + tanb)
+#                ratio.Fit('myfunc', 'Q')
+#                func = ratio.GetFunction('myfunc')
+#                func.SetLineColor(2)
+#                func.SetLineStyle(2)
+#                func.SetName('weight_mA' + str(mass) + '_' + tanb)
                 
                 if ratio.GetMinimum() < 0:
                     print 'Warning !'
 
-                results.append(copy.deepcopy(func))
+#                results.append(copy.deepcopy(func))
+                results.append(ratio)
 
                 # validation plots:
                 self.canvas.Clear()
-                self.canvas.Divide(2)
-                self.overlay(hists, 1)
-                self.overlay([ratio], 2)
+                self.canvas.Divide(2,2)
+                self.title = '(m_{A}, tan#beta) = ' + str(mass) + ',' + tanb.replace('tanb_', '')
+                
+                self.overlay([hists_2hdm[0], hists_2hdm[1], hists_2hdm[2]], ['Int : t+b', 'Int : t', 'Int : b'], 1)
+                self.overlay([interference, rescaled_top, rescaled_bottom], ['Int Total', 'pure top', 'pure b'], 2)
+                self.overlay(hists, ['PY8', 'NLO'], 3)
+                self.overlay([ratio], ['ratio'], 4)
                 self.canvas.Print('validation.pdf')
 
 

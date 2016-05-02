@@ -4,11 +4,9 @@ void example(){
   // replace directory, as you wish (i.e. if you want to work on different directory)
   gROOT->Macro("./functionmacro.C+g");
 
-
   // read your ROOT file ... replace as you wish
   TFile *tfile = new TFile("/afs/cern.ch/user/y/ytakahas/public/forHTT/tree_HiggsSUSYGG500.root");
   TTree *tree = (TTree*) tfile->Get("tree");
-
 
   // define histogram
   TH1F* h_PY8 = new TH1F("h_PY8", "h_PY8", 30, 0, 500);
@@ -16,7 +14,6 @@ void example(){
    
   h_PY8->Sumw2();
   h_PY8_weighted->Sumw2();
-
 
   /*
     create histogram with Higgs pT, with additional weights from NLO:
