@@ -2,13 +2,12 @@ import ConfigParser
 import shelve
 import copy
 from officialStyle import officialStyle
-from ROOT import gROOT, TFile, TH1F, TF1, TCanvas, gStyle, TLegend
+from ROOT import gROOT, TFile, TH1F, TCanvas, gStyle, TLegend, TGraphErrors
 
 gROOT.SetBatch(True)
 officialStyle(gStyle)
 gStyle.SetOptTitle(1)
 gStyle.SetOptStat(0)
-
 
 def applyLegendSettings(leg):
     leg.SetBorderSize(0)
@@ -80,8 +79,6 @@ class ReweightingManager(object):
 
     def overlay(self, hists, titles, id):
         self.canvas.cd(id)
-#        ymax = max([hist.GetMaximum() for hist in hists])
-#        ymin = max([hist.GetMinimum() for hist in hists])
 
         ymax = max([hist.GetBinContent(hist.GetMaximumBin()) for hist in hists])
         ymin = min([hist.GetBinContent(hist.GetMinimumBin()) for hist in hists])
@@ -168,10 +165,6 @@ class ReweightingManager(object):
                 rescaled_bottom = copy.deepcopy(hists_2hdm[4])
                 rescaled_bottom.Scale(Yb_MSSM*Yb_MSSM/(Yb_2HDM*Yb_2HDM))
 
-#                print 'Interference :', interference.GetSumOfWeights(), ' => rescaled : ', Yt_MSSM*Yb_MSSM/(Yt_2HDM*Yb_2HDM), ' => ', interference.GetSumOfWeights()*Yt_MSSM*Yb_MSSM/(Yt_2HDM*Yb_2HDM)
-#                print 'pure-top :', hists_2hdm[3].GetSumOfWeights(), ' => rescaled : ', Yt_MSSM*Yt_MSSM/(Yt_2HDM*Yt_2HDM), ' => ', rescaled_top.GetSumOfWeights()
-#                print 'pure-bottom :', hists_2hdm[4].GetSumOfWeights(), ' => rescaled : ', Yb_MSSM*Yb_MSSM/(Yb_2HDM*Yb_2HDM), ' => ', rescaled_bottom.GetSumOfWeights()
-
                 hist_mssm.Add(rescaled_bottom)
 
                 hist_mssm.GetYaxis().SetRangeUser(0., hist_mssm.GetBinContent(hist_mssm.GetMaximumBin())*1.1)
@@ -188,25 +181,20 @@ class ReweightingManager(object):
                 
                 ratio.GetYaxis().SetRangeUser(ratio.GetBinContent(ratio.GetMinimumBin())*0.8, ratio.GetBinContent(ratio.GetMaximumBin())*1.2)
 
-#                myfunc = TF1('myfunc', 'expo(0) + pol3(2)')
+                # convert ratio into TGraph so that we can use Eval
 
-#                ratio.Fit('myfunc', 'Q')
-#                func = ratio.GetFunction('myfunc')
-#                func.SetLineColor(2)
-#                func.SetLineStyle(2)
-#                func.SetName('weight_mA' + str(mass) + '_' + tanb)
-                
-                if ratio.GetMinimum() < 0:
-                    print 'Warning !'
+                graph = TGraphErrors()
+                for ibin in range(1, ratio.GetXaxis().GetNbins()+1):
+                    graph.SetPoint(ibin-1, ratio.GetBinCenter(ibin), ratio.GetBinContent(ibin))
+                    graph.SetPointError(ibin-1, 0, ratio.GetBinError(ibin))
 
-#                results.append(copy.deepcopy(func))
-                results.append(ratio)
+                graph.SetName('weight_' + ratio.GetName())
+                results.append(copy.deepcopy(graph))
 
                 # validation plots:
                 self.canvas.Clear()
                 self.canvas.Divide(2,2)
-                self.title = '(m_{A}, tan#beta) = ' + str(mass) + ',' + tanb.replace('tanb_', '')
-                
+                self.title = '(m_{A}, tan#beta) = ' + str(mass) + ',' + tanb.replace('tanb_', '')                
                 self.overlay([hists_2hdm[0], hists_2hdm[1], hists_2hdm[2]], ['Int : t+b', 'Int : t', 'Int : b'], 1)
                 self.overlay([interference, rescaled_top, rescaled_bottom], ['Int Total', 'pure top', 'pure b'], 2)
                 self.overlay(hists, ['PY8', 'NLO'], 3)
