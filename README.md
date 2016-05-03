@@ -12,7 +12,7 @@ Go to user directory
 
 The idea is to load the shared library and use _returnNLOweight_ function. 
 
-You can try following example code.
+You can try following example code, to get an idea How to use this.
 
 C++:
 
@@ -28,6 +28,8 @@ The example code creates the shared library out of [functionmacro.C](https://git
 If you prefer, you can also add following line to your `rootlogon.C`
 
 `gROOT->Macro("./functionmacro.C+g");`
+
+(change directory location, if needed)
 
 
 **DO NOT MODIFY functionmacro.C unless you need your own defined function**
@@ -62,8 +64,7 @@ This will create Python shelve object, which stores tan(beta) vs Yukawa coupling
 This macro then Produce reweighting file with the settings in config.ini (which should be easy to understand).
 
 This macro compare the PY8 and MSSM distribution and derive the weight (MSSM/PY8 ratio) as a function of Higgs pT. 
-The fitting function is exponential + pol3 (empirically, this was the best).
-The fit function is stored as `weight_mA[X]_tanb_[Y]`, where X is the mass and Y is tan(beta), both of them are specified in config.ini.
+The weight function is stored as `weight_mA[X]_tanb_[Y]`, where X is the mass and Y is tan(beta), both of them are specified in config.ini.
 
-The macro also produces validation.pdf, where you can check if your fitting went OK or not.
+The macro also produces validation.pdf, where you can check all the individual distributions.
 You can change output ROOT file location by changing _output_ variable in config.ini.
